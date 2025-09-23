@@ -55,30 +55,7 @@ def init_db():
 # Initialize database on startup
 init_db()
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM statistics')
-            stats_count = cursor.fetchone()[0]
-        
-        return jsonify({
-            "status": "healthy",
-            "service": "naebak-statistics-service",
-            "database": "connected",
-            "total_statistics": stats_count,
-            "timestamp": datetime.now().isoformat()
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "unhealthy",
-            "service": "naebak-statistics-service",
-            "database": "error",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 503
+# الدالة المكررة محذوفة - سيتم استخدام الدالة المحسنة في الأسفل
 
 @app.route('/stats', methods=['POST'])
 def add_statistic():
@@ -345,24 +322,81 @@ def get_summary():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/', methods=['GET'])
-def index():
-    """Service information"""
+def service_info():
+    """Service information endpoint"""
     return jsonify({
         "service": "Naebak Statistics Service",
+        "description": "خدمة الإحصائيات وعداد الزوار لمنصة نائبك.كوم - تتبع وإدارة جميع الإحصائيات والمقاييس",
         "version": "1.0.0",
-        "description": "Manages application statistics using SQLite",
+        "status": "active",
+        "technology": "Flask + SQLite",
         "endpoints": {
-            "POST /stats": "Add or update a statistic",
-            "GET /stats": "Get statistics with optional filtering",
-            "POST /stats/daily": "Add daily statistic",
-            "GET /stats/daily": "Get daily statistics with date range",
-            "GET /stats/summary": "Get statistics summary by category",
-            "GET /health": "Health check"
+            "info": "/",
+            "stats_create": "POST /stats",
+            "stats_list": "GET /stats",
+            "daily_stats_create": "POST /stats/daily",
+            "daily_stats_list": "GET /stats/daily",
+            "stats_summary": "GET /stats/summary",
+            "health": "/health"
         },
-        "database": "SQLite"
+        "features": [
+            "إدارة الإحصائيات العامة",
+            "تتبع الإحصائيات اليومية",
+            "ملخص الإحصائيات حسب الفئة",
+            "قاعدة بيانات SQLite محلية",
+            "واجهات برمجية RESTful",
+            "معالجة الأخطاء المتقدمة",
+            "دعم CORS للتطبيقات الأمامية",
+            "فحص صحة الخدمة"
+        ],
+        "database": {
+            "type": "SQLite",
+            "path": DB_PATH,
+            "tables": ["statistics", "daily_stats"]
+        },
+        "documentation": "https://github.com/alcounsol17/naebak-statistics-service",
+        "support": "https://naebak.com"
     })
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    try:
+        # فحص قاعدة البيانات
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM statistics')
+            stats_count = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM daily_stats')
+            daily_count = cursor.fetchone()[0]
+        
+        return jsonify({
+            "status": "healthy",
+            "service": "Naebak Statistics Service",
+            "version": "1.0.0",
+            "database": {
+                "status": "connected",
+                "statistics_count": stats_count,
+                "daily_stats_count": daily_count
+            },
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', 8007))  # تغيير المنفذ الافتراضي لتجنب التضارب
     debug = os.getenv('FLASK_ENV') == 'development'
+    
+    # تهيئة قاعدة البيانات عند بدء التطبيق
+    init_db()
+    
+    print(f"🚀 Starting Naebak Statistics Service on port {port}")
+    print(f"📊 Database: {DB_PATH}")
+    print(f"🔧 Debug mode: {debug}")
+    
     app.run(host='0.0.0.0', port=port, debug=debug)
